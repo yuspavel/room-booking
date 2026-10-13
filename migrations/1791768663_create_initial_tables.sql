@@ -13,7 +13,7 @@ CREATE TABLE users
 (
 id         TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
 name       VARCHAR(20) NOT NULL,
-passHash   VARCHAR(100) NOT NULL,
+pass_hash   VARCHAR(100) NOT NULL,
 email      VARCHAR(30) NOT NULL,
 phone      VARCHAR(20),
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
