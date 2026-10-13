@@ -1,0 +1,16 @@
+services:
+   postgres:
+     image: postgres:18.0
+     restart: unless-stopped
+     container_name: postgres-dev
+     environment:
+        POSTGRES_USER: user
+        POSTGRES_PASSWORD: Qwerty123
+        POSTGRES_DB: roombook
+     ports:
+       - "5430:5432"
+     volumes:
+       - rb_volume:/var/lib/postgresql
+
+volumes:
+  rb_volume: {}

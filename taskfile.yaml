@@ -1,0 +1,50 @@
+version: '3'
+
+vars:
+  GOOSE_VERSION: 'v3.28.0'
+  BIN_DIR: '{{.USERPROFILE}}/go/bin'
+  GOOSE: 'goose'
+
+tasks:
+  goose:install:
+    desc: "Устанавливает goose"
+    cmds:
+      - GOBIN={{.BIN_DIR}} go install github.com/pressly/goose/v3/cmd/goose@{{.GOOSE_VERSION}}
+    status:
+      - where goose
+
+  compose:up:
+    desc: "Поднимает PostgreSQL"
+    cmds:
+      - docker compose up -d
+
+  compose:down:
+    desc: "Останавливает PostgreSQL и удаляет volume"
+    cmds:
+      - docker compose down -v
+
+  migrate:up:
+    desc: "Применяет все миграции"
+    deps: [goose:install]
+    dotenv: ['.env']
+    cmds:
+      - '{{.GOOSE}} -dir migrations postgres "$PG_DSN" up'
+
+  migrate:down:
+    desc: "Откатывает последнюю миграцию"
+    deps: [goose:install]
+    dotenv: ['.env']
+    cmds:
+      - '{{.GOOSE}} -dir migrations postgres "$PG_DSN" down'
+
+  migrate:status:
+    desc: "Показывает статус миграций"
+    deps: [goose:install]
+    dotenv: ['.env']
+    cmds:
+      - '{{.GOOSE}} -dir migrations postgres "$PG_DSN" status'
+
+  default:
+    desc: "Список доступных команд"
+    cmds:
+      - task --list

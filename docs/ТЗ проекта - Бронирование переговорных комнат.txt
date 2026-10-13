@@ -1,0 +1,87 @@
+Переговорные - ROOMS
+id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+name VARCHAR(30) NOT NULL,
+capacity INTEGER NOT NULL,
+hour_price NUMERIC(10,2) NOT NULL,
+currency VARCHAR(4) NOT NULL,
+created_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+Бронь - BOOKING 
+id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+room_id INTEGER NOT NULL REFERENCES room (id),
+created_by UUID NOT NULL REFERENCES user (id),
+title VARCHAR(50) NOT NULL,
+description VARCHAR(200),
+participants_count INTEGER NOT NULL,
+from_time TIME STAMP NOT NULL,
+to_time TIME STAMP NOT NULL,
+status VARCHAR(10) NOT NULL
+paid BOOLEAN,
+created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+Бронирующий - USER
+id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+name VARCHAR(20) NOT NULL,
+passHash VARCHAR(100) NOT NULL,
+email VARCHAR(30) NOT NULL,
+phone VARCHAR(20)
+created_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+
+STATUSES (константы):
+pending - статус ожидания подтверждения (confirmed), например ожидание поступления оплаты.
+confirmed - статус подтвержденной брони, но время собрания еще не наступило
+cancelled - статус отмененной брони
+completed - статус брони после проведения собрания. Текущая дата больше to_time
+
+
+Бизнес правила:
+1. Нельзя создать бронь в прошлом
+2. Нельзя забронировать комнату дважды
+3. Количество участников не должно превышать вместимость
+4. Время начала меньше времени окончания
+5. Только создатель может отменить бронь
+6. Нельзя забронировать комнату в статусе pending и confirmed
+
+
+Возможные операции:
+-------USER-------------------
+1. Создание пользователя
+2. Получение пользователя по id
+3. Смена пароля, email или номера телефона 
+4. Удаление пользователя (опционально)
+
+-------ROOM-------------------
+1. Создание переговорной комнаты
+2. Получение комнаты по id
+3. Обновление данных переговорной комнаты (название, кол-во вмещаемых человек, цена, валюта)
+4. Удаление комнаты (опционально)
+
+-------BOOKING----------------
+1. Создание брони
+2. Получение брони по id
+3. Обновление брони (смена комнаты, название мероприятия, описание мероприятия, планируемое кол-во человек, времени брони, смена статуса)
+4. Удаление брони по id, с подтверждением.
+
+-------Сервисные операции-----
+1. Health check
+
+Структура проекта:
+cmd
+    main.go
+internal
+   -transport
+       -http
+       -grpc  
+   -domain
+       -models
+   -repository
+   -service
+migrations
+configs
+go.mod
+go.sum
+docker-compose.yaml
+taskfile.yaml
+
