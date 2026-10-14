@@ -1,7 +1,7 @@
 -- +goose Up
 WITH 
 user_inserted AS(
-INSERT INTO users (name,passHash,email,phone)
+INSERT INTO users (name,pass_hash,email,phone)
 VALUES ('Artur','f1c3a7f2360d86d5543176893de6a389','artur@gmail.com','+78901256742'),
        ('Gena','2b47ddb6c5c943d956820159b7888d1a','gena@yahho.com','89001730947'),
        ('Ostin','de5e1b5ec6032ffd033dfce170bf8901','ostin.pauers@mail.ru','007812765974'),
