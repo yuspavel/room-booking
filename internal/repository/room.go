@@ -108,3 +108,39 @@ func (p *pgxRepository) UpdateRoom(ctx context.Context, roomID int, room models.
 	}
 	return int(c.RowsAffected()), nil
 }
+
+func (p *pgxRepository) ListRooms(ctx context.Context) ([]models.Room, error) {
+	query, _, err := psql.
+		Select(roomTableName).
+		Column(idRoomTableColumn, nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn, createdAtRoomTableColumn).
+		ToSql()
+
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := p.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []models.Room
+	for rows.Next() {
+		var room models.Room
+		rows.Scan(&room.ID,
+			&room.Name,
+			&room.Capacity,
+			&room.HourPrice,
+			&room.Currency,
+			&room.CreatedAt)
+
+		rooms = append(rooms, room)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return rooms, nil
+
+}
