@@ -6,8 +6,6 @@ import (
 	errs "room-booking/internal/errors"
 	"room-booking/internal/models"
 
-	"github.com/google/uuid"
-
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -25,7 +23,7 @@ const (
 
 var ()
 
-func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash string, email string, phone string) (*models.User, error) {
+func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash string, email string, phone string) (models.User, error) {
 	query, args, err := psql.
 		Insert(userTableName).
 		Columns(nameUserTableColumn, passHashTableColumn, emailTableColumn, phoneTableColumn).
@@ -34,7 +32,7 @@ func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash st
 		ToSql()
 
 	if err != nil {
-		return nil, err
+		return models.User{}, err
 	}
 
 	var user models.User
@@ -44,19 +42,19 @@ func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash st
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
 			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
-				return nil, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
+				return models.User{}, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
 			}
 		}
-		return nil, err
+		return models.User{}, err
 	}
-	return &user, nil
+	return user, nil
 }
 
-func (p *pgxRepository) GetUser(ctx context.Context, id uuid.UUID) (*models.User, error) {
+func (p *pgxRepository) GetUser(ctx context.Context, email string) (*models.User, error) {
 	query, args, err := psql.
 		Select(idUserTableColumn, nameUserTableColumn, emailTableColumn, phoneTableColumn, createdAtUserTableColumn).
 		From(userTableName).
-		Where(sq.Eq{idUserTableColumn: id}).
+		Where(sq.Eq{emailTableColumn: email}).
 		ToSql()
 
 	if err != nil {
@@ -75,7 +73,7 @@ func (p *pgxRepository) GetUser(ctx context.Context, id uuid.UUID) (*models.User
 	return &user, nil
 }
 
-func (p *pgxRepository) UpdateUser(ctx context.Context, id uuid.UUID, user models.UserUpdate) (int, error) {
+func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user models.UserUpdate) (int, error) {
 	updated := false
 	builder := psql.
 		Update(userTableName)
@@ -102,7 +100,7 @@ func (p *pgxRepository) UpdateUser(ctx context.Context, id uuid.UUID, user model
 	}
 
 	query, args, err := builder.
-		Where(sq.Eq{idUserTableColumn: id}).
+		Where(sq.Eq{emailTableColumn: email}).
 		ToSql()
 
 	if err != nil {
@@ -111,8 +109,14 @@ func (p *pgxRepository) UpdateUser(ctx context.Context, id uuid.UUID, user model
 
 	c, err := p.db.Exec(ctx, query, args...)
 	if err != nil {
-		return 0, err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
+			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
+				return 0, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
+			}
+		}
 	}
+
 	if int(c.RowsAffected()) == 0 {
 		return 0, errs.ErrNoRowsFound
 	}
