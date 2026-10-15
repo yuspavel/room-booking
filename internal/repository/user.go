@@ -43,7 +43,7 @@ func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash st
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
-			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значение...
+			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
 				return nil, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
 			}
 		}

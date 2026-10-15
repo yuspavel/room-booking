@@ -14,8 +14,8 @@ VALUES('Green meeting office',40,100.5,'RUB')
 RETURNING id,name
 )
 
-INSERT INTO booking(room_id,user_id,title,description,participants_count,from_time,to_time,status,paid)
-SELECT r.id,u.id,'Обсуждение проекта строительства','Составление расписания, определение команд и зон ответственности',(random()*30+1)::int,'2026-01-10T10:00:00+05:00'::TIMESTAMPTZ,'2026-01-10T15:00:00+05:00' TIMESTAMPTZ,'pending',false
+INSERT INTO booking(room_id,user_id,title,description,participants_count,from_time,to_time,paid)
+SELECT r.id,u.id,'Обсуждение проекта строительства','Составление расписания, определение команд и зон ответственности',(random()*30+1)::int,'2026-01-10T10:00:00+05:00'::TIMESTAMPTZ,'2026-01-10T15:00:00+05:00' TIMESTAMPTZ,false
 FROM user_inserted u, rooms_inserted r;
 
 -- +goose Down
