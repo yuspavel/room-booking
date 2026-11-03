@@ -23,7 +23,7 @@ CREATE TYPE booking_status AS ENUM
 (
     'pending',
     'confirmed',
-    'cancelled',
+    'canceled',
     'completed'
 );
 
@@ -37,7 +37,11 @@ description VARCHAR(200),
 participants_count INTEGER NOT NULL,
 from_time  TIMESTAMPTZ NOT NULL,
 to_time    TIMESTAMPTZ NOT NULL,
-status     booking_status NOT NULL DEFAULT 'pending',
+status     booking_status NOT NULL DEFAULT 'pending' CONSTRAINT chk_booking_status
+CHECK(
+    status IN('pending','confirmed','canceled','completed')
+),
+amount NUMERIC (10,2) DEFAULT 0,
 paid       BOOLEAN,
 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -48,4 +52,5 @@ updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 DROP TABLE room;
 DROP TABLE users;
 DROP TABLE booking;
+DROP TYPE booking_status;
 

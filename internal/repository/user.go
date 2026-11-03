@@ -66,14 +66,14 @@ func (p *pgxRepository) GetUser(ctx context.Context, email string) (*models.User
 	err = p.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.Email, &user.Phone, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &models.User{}, errs.ErrNoRowsFound
+			return &models.User{}, errs.ErrUserNotFound
 		}
 		return &models.User{}, err
 	}
 	return &user, nil
 }
 
-func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user models.UserUpdate) (int, error) {
+func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user models.UserUpdate) (*models.User, error) {
 	updated := false
 	builder := psql.
 		Update(userTableName)
@@ -86,41 +86,39 @@ func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user model
 		builder = builder.Set(passHashTableColumn, *user.PassHash)
 		updated = true
 	}
-	if user.Email != nil {
-		builder = builder.Set(emailTableColumn, *user.Email)
-		updated = true
-	}
+
+	builder = builder.Set(emailTableColumn, email)
+
 	if user.Phone != nil {
 		builder = builder.Set(phoneTableColumn, *user.Phone)
 		updated = true
 	}
 
 	if !updated {
-		return 0, errs.ErrInvalidInput
+		return nil, errs.ErrInvalidInput
 	}
 
+	builder = builder.Suffix("RETURNING " + idUserTableColumn + ", " + nameUserTableColumn + ", " + emailTableColumn)
 	query, args, err := builder.
 		Where(sq.Eq{emailTableColumn: email}).
 		ToSql()
 
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	c, err := p.db.Exec(ctx, query, args...)
+	var usr models.User
+	err = p.db.QueryRow(ctx, query, args...).Scan(&usr.ID, &usr.Name, &usr.Email)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
 			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
-				return 0, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
+				return nil, errs.ErrEmailAlreadyExist //----------возвращаем кастомную ошибку
 			}
 		}
 	}
 
-	if int(c.RowsAffected()) == 0 {
-		return 0, errs.ErrNoRowsFound
-	}
-	return int(c.RowsAffected()), nil
+	return &usr, nil
 }
 
 func (p *pgxRepository) ListUsers(ctx context.Context) ([]models.User, error) {

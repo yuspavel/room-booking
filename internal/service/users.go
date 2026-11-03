@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	errs "room-booking/internal/errors"
 	"room-booking/internal/models"
 
@@ -13,17 +12,16 @@ import (
 type UserRepo interface {
 	CreateUser(ctx context.Context, name, passhash, email, phone string) (models.User, error)
 	GetUser(ctx context.Context, email string) (*models.User, error)
-	UpdateUser(ctx context.Context, email string, user models.UserUpdate) (int, error)
-	//ListUsers(ctx context.Context) ([]models.User, error)
+	UpdateUser(ctx context.Context, email string, user models.UserUpdate) (*models.User, error)
 }
 
-type Service struct {
+type UserService struct {
 	urepo UserRepo
 }
 
 // ОБРАТИТЬ ВНИМАНИЕ: на передачу возвращаемой структуры models.User. В этом методе она передается по значению
-func (s *Service) Register(ctx context.Context, u models.User) (models.User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(u.PassHash), bcrypt.DefaultCost)
+func (s *UserService) Register(ctx context.Context, u models.User) (models.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -31,7 +29,7 @@ func (s *Service) Register(ctx context.Context, u models.User) (models.User, err
 	user, err := s.urepo.CreateUser(ctx, u.Name, string(hash), u.Email, u.Phone)
 	if err != nil {
 		if errors.Is(err, errs.ErrEmailAlreadyExist) {
-			return models.User{}, fmt.Errorf("user already exist")
+			return models.User{}, errs.ErrEmailAlreadyExist
 		}
 		return models.User{}, err
 	}
@@ -39,29 +37,29 @@ func (s *Service) Register(ctx context.Context, u models.User) (models.User, err
 }
 
 // ОБРАТИТЬ ВНИМАНИЕ: на передачу возвращаемой структуры models.User. В этом методе она передается по ссылке
-func (s *Service) Authorize(ctx context.Context, email, password string) (*models.User, error) {
+func (s *UserService) Authorize(ctx context.Context, email, password string) (*models.User, error) {
 	user, err := s.urepo.GetUser(ctx, email)
 	if err != nil {
-		if errors.Is(err, errs.ErrNoRowsFound) {
-			return nil, fmt.Errorf("invalid credentials")
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return nil, errs.ErrUserNotFound
 		}
 		return nil, err
 	}
 
-	hashedPassword := []byte(user.PassHash)
-	if err = bcrypt.CompareHashAndPassword(hashedPassword, hashedPassword); err != nil {
+	hashedPassword := []byte(user.Password)
+	if err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password)); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (s *Service) UpdateUserData(ctx context.Context, email string, user models.UserUpdate) (int, error) {
-	c, err := s.urepo.UpdateUser(ctx, email, user)
+func (s *UserService) UpdateUserData(ctx context.Context, email string, u models.UserUpdate) (*models.User, error) {
+	user, err := s.urepo.UpdateUser(ctx, email, u)
 	if err != nil {
 		if errors.Is(err, errs.ErrEmailAlreadyExist) {
-			return 0, fmt.Errorf("email already exist")
+			return nil, errs.ErrEmailAlreadyExist
 		}
-		return 0, err
+		return nil, err
 	}
-	return c, nil
+	return user, nil
 }

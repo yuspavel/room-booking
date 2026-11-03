@@ -8,7 +8,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -18,7 +17,7 @@ var (
 
 const (
 	roomTableName            = "room"
-	idRoomTableColumn        = "id"
+	roomIDTableColumn        = "id"
 	nameRoomTableColumn      = "name"
 	capacityTableColumn      = "capacity"
 	priceTableColumn         = "hour_price"
@@ -30,7 +29,7 @@ func (p *pgxRepository) CreateRoom(ctx context.Context, name string, capacity in
 	query, args, err := psql.Insert(roomTableName).
 		Columns(nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn).
 		Values(name, capacity, price, currency).
-		Suffix("RETURNING " + idRoomTableColumn + ", " + createdAtRoomTableColumn).
+		Suffix("RETURNING " + roomIDTableColumn + ", " + createdAtRoomTableColumn).
 		ToSql()
 
 	if err != nil {
@@ -45,11 +44,11 @@ func (p *pgxRepository) CreateRoom(ctx context.Context, name string, capacity in
 	return &room, nil
 }
 
-func (p *pgxRepository) GetRoom(ctx context.Context, id uuid.UUID) (*models.Room, error) {
+func (p *pgxRepository) GetRoom(ctx context.Context, id int) (*models.Room, error) {
 	query, args, err := psql.
-		Select(idRoomTableColumn, nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn, createdAtRoomTableColumn).
+		Select(roomIDTableColumn, nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn, createdAtRoomTableColumn).
 		From(roomTableName).
-		Where(sq.Eq{idRoomTableColumn: id}).
+		Where(sq.Eq{roomIDTableColumn: id}).
 		ToSql()
 
 	if err != nil {
@@ -60,7 +59,7 @@ func (p *pgxRepository) GetRoom(ctx context.Context, id uuid.UUID) (*models.Room
 	err = p.db.QueryRow(ctx, query, args...).Scan(&room.ID, &room.Name, &room.Capacity, &room.HourPrice, &room.Currency, &room.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.ErrNoRowsFound
+			return nil, errs.ErrRoomNotFound
 		}
 		return nil, err
 	}
@@ -93,7 +92,7 @@ func (p *pgxRepository) UpdateRoom(ctx context.Context, roomID int, room models.
 		return 0, errs.ErrInvalidInput
 	}
 	query, args, err := builder.
-		Where(sq.Eq{idRoomTableColumn: roomID}).
+		Where(sq.Eq{roomIDTableColumn: roomID}).
 		ToSql()
 	if err != nil {
 		return 0, err
@@ -104,7 +103,7 @@ func (p *pgxRepository) UpdateRoom(ctx context.Context, roomID int, room models.
 		return 0, err
 	}
 	if int(c.RowsAffected()) == 0 {
-		return 0, errs.ErrNoRowsFound
+		return 0, errs.ErrRoomNotFound
 	}
 	return int(c.RowsAffected()), nil
 }
@@ -112,7 +111,7 @@ func (p *pgxRepository) UpdateRoom(ctx context.Context, roomID int, room models.
 func (p *pgxRepository) ListRooms(ctx context.Context) ([]models.Room, error) {
 	query, _, err := psql.
 		Select(roomTableName).
-		Column(idRoomTableColumn, nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn, createdAtRoomTableColumn).
+		Column(roomIDTableColumn, nameRoomTableColumn, capacityTableColumn, priceTableColumn, currencyTableColumn, createdAtRoomTableColumn).
 		ToSql()
 
 	if err != nil {
@@ -143,4 +142,17 @@ func (p *pgxRepository) ListRooms(ctx context.Context) ([]models.Room, error) {
 	}
 	return rooms, nil
 
+}
+
+func (p *pgxRepository) Exist(ctx context.Context, roomID int) (bool, error) {
+	query := "SELECT EXISTS(SELECT 1 FROM room WHERE id = $1)"
+
+	var exist bool
+
+	err := p.db.QueryRow(ctx, query, roomID).Scan(&exist)
+
+	if err != nil {
+		return false, err
+	}
+	return exist, nil
 }
