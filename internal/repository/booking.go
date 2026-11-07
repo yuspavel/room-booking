@@ -76,7 +76,7 @@ func (p *pgxRepository) GetBooking(ctx context.Context, id int) (*models.Booking
 	return &bkg, nil
 }
 
-func (p *pgxRepository) UpdateBooking(ctx context.Context, id int, b models.Booking) (*models.Booking, error) {
+func (p *pgxRepository) UpdateBooking(ctx context.Context, b models.Booking) (*models.Booking, error) {
 	query, args, err := psql.Update(bookingTableName).
 		Set(bookingIDColumnName, b.ID).
 		Set(bookingRoomIDColumnName, b.RoomID).
@@ -86,7 +86,7 @@ func (p *pgxRepository) UpdateBooking(ctx context.Context, id int, b models.Book
 		Set(bookingToTimeColumnName, b.ToTime).
 		Set(bookingStatusColumnName, b.Status).
 		Set(bookingAmountTableColumn, b.Amount).
-		Set(bookingPaidColumnName, b.Paid).Where(sq.Eq{bookingIDColumnName: id}).
+		Set(bookingPaidColumnName, b.Paid).Where(sq.Eq{bookingIDColumnName: b.ID}).
 		Suffix("RETURNING " + bookingIDColumnName + ", " + bookingTitleColumnName + ", " + bookingStatusColumnName).
 		ToSql()
 

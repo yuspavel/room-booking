@@ -13,7 +13,7 @@ import (
 type BookingRepo interface {
 	InsertBooking(ctx context.Context, roomID int, userID uuid.UUID, title string, description string, participants int, fromTime time.Time, toTime time.Time, status models.BookingStatus, paid bool) (*models.Booking, error)
 	GetBooking(ctx context.Context, id int) (*models.Booking, error)
-	UpdateBooking(ctx context.Context, id int, b models.BookingUpdate) (*models.Booking, error)
+	UpdateBooking(ctx context.Context, b models.Booking) (*models.Booking, error)
 	ListBookings(ctx context.Context) ([]models.Booking, error)
 	HasOverlapped(ctx context.Context, id int, roomID int, FromTime, toTime time.Time) (bool, error)
 }
@@ -140,8 +140,7 @@ func (b *BookingService) UpdateBooking(ctx context.Context, bkg models.BookingUp
 		return nil, errs.ErrStatusNotAllowed
 	}
 
-	//fBooking, err := b.bookingRepo.UpdateBooking(ctx, bkg.ID, completed)
-	return nil, nil
+	return b.bookingRepo.UpdateBooking(ctx, *booking)
 }
 
 func (b *BookingService) GetBooking(ctx context.Context, id int) (*models.Booking, error) {
