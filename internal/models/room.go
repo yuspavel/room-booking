@@ -5,12 +5,12 @@ import (
 )
 
 type Room struct {
-	ID        int       `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Capacity  int       `db:"capacity" json:"capacity"`
-	HourPrice int64     `db:"hour_price" json:"price"`
-	Currency  string    `db:"currency" json:"currency"`
-	CreatedAt time.Time `db:"created_at" json:"createdat"`
+	ID        int       `db:"id"`
+	Name      string    `db:"name"`
+	Capacity  int       `db:"capacity"`
+	HourPrice int64     `db:"hour_price"`
+	Currency  string    `db:"currency"`
+	CreatedAt time.Time `db:"created_at"`
 }
 
 type RoomUpdate struct {

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"room-booking/internal/patch"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,15 +25,15 @@ type Booking struct {
 
 type BookingUpdate struct {
 	ID                int
-	RoomID            *int
-	Title             *string
-	Description       *string
-	ParticipantsCount *int
-	FromTime          *time.Time
-	ToTime            *time.Time
-	Status            *BookingStatus
-	Amount            *int64
-	Paid              *bool
+	RoomID            int
+	Title             patch.Field[string]
+	Description       patch.Field[string]
+	ParticipantsCount patch.Field[int]
+	FromTime          patch.Field[time.Time]
+	ToTime            patch.Field[time.Time]
+	Status            patch.Field[BookingStatus]
+	Amount            patch.Field[int64]
+	Paid              patch.Field[bool]
 }
 
 type BookingStatus string

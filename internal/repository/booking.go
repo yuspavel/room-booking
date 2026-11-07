@@ -78,41 +78,38 @@ func (p *pgxRepository) UpdateBooking(ctx context.Context, id int, b models.Book
 	updated := false
 
 	builder := psql.Update(bookingTableName)
+	builder = builder.Set(bookingRoomIDColumnName, b.RoomID)
 
-	if b.RoomID != nil {
-		builder = builder.Set(bookingRoomIDColumnName, *b.RoomID)
+	if b.Title.HasValue() {
+		builder = builder.Set(bookingTitleColumnName, *b.Title.Val)
 		updated = true
 	}
-	if b.Title != nil {
-		builder = builder.Set(bookingTitleColumnName, *b.Title)
+	if b.Description.HasValue() {
+		builder = builder.Set(bookingDescriptionColumnName, *b.Description.Val)
 		updated = true
 	}
-	if b.Description != nil {
-		builder = builder.Set(bookingDescriptionColumnName, *b.Description)
+	if b.ParticipantsCount.HasValue() {
+		builder = builder.Set(bookingParticipantsColumnName, *b.ParticipantsCount.Val)
 		updated = true
 	}
-	if b.ParticipantsCount != nil {
-		builder = builder.Set(bookingParticipantsColumnName, *b.ParticipantsCount)
+	if b.FromTime.HasValue() {
+		builder = builder.Set(bookingFromTimeColumnName, *b.FromTime.Val)
 		updated = true
 	}
-	if b.FromTime != nil {
-		builder = builder.Set(bookingFromTimeColumnName, *b.FromTime)
+	if b.ToTime.HasValue() {
+		builder = builder.Set(bookingToTimeColumnName, *b.ToTime.Val)
 		updated = true
 	}
-	if b.ToTime != nil {
-		builder = builder.Set(bookingToTimeColumnName, *b.ToTime)
+	if b.Status.HasValue() {
+		builder = builder.Set(bookingStatusColumnName, *b.Status.Val)
 		updated = true
 	}
-	if b.Status != nil {
-		builder = builder.Set(bookingStatusColumnName, *b.Status)
+	if b.Amount.HasValue() {
+		builder = builder.Set(bookingAmountTableColumn, *b.Amount.Val)
 		updated = true
 	}
-	if b.Amount != nil {
-		builder = builder.Set(bookingAmountTableColumn, *b.Amount)
-		updated = true
-	}
-	if b.Paid != nil {
-		builder = builder.Set(bookingPaidColumnName, *b.Paid)
+	if b.Paid.HasValue() {
+		builder = builder.Set(bookingPaidColumnName, *b.Paid.Val)
 		updated = true
 	}
 	if !updated {
@@ -173,8 +170,8 @@ func (p *pgxRepository) ListBookings(ctx context.Context) ([]models.Booking, err
 	return bookings, nil
 }
 
-func (p *pgxRepository) HasOverlaped(ctx context.Context, roomID int, FromTime, ToTime time.Time) (bool, error) {
-	const query = "SELECT EXIST (SELECT 1 FROM booking WHERE room_id=$1 AND status in ('pending','confirmed') AND from_time <$3 AND to_time > $2);"
+func (p *pgxRepository) HasOverlaped(ctx context.Context, bookingID int, roomID int, FromTime, ToTime time.Time) (bool, error) {
+	const query = "SELECT EXIST (SELECT 1 FROM booking WHERE room_id=$1 AND id <> $2 AND status in ('pending','confirmed') AND from_time < $4 AND to_time > $3);"
 
 	var overlaped bool
 

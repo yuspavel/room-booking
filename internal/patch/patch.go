@@ -31,6 +31,6 @@ func (f *Field[T]) IsSet() bool {
 	return f.Set
 }
 
-func (f Field[T]) HasValue() bool { //----------------Проверка на наличие значение в переменной Val и Set==true
+func (f *Field[T]) HasValue() bool { //----------------Проверка на наличие значение в переменной Val и Set==true
 	return f.Set && f.Val != nil
 }

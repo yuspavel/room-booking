@@ -9,7 +9,7 @@ import (
 
 type RoomRepo interface {
 	CreateRoom(ctx context.Context, name string, capacity int, price int64, currency string) (*models.Room, error)
-	GetRoom(ctx context.Context, id int) (*models.Room, error)
+	GetRoom(ctx context.Context, id int) (models.Room, error)
 	UpdateRoom(ctx context.Context, roomID int, room models.RoomUpdate) (int, error)
 	ListRooms(ctx context.Context) ([]models.Room, error)
 	Exist(ctx context.Context, roomID int) (bool, error)
@@ -27,13 +27,13 @@ func (s *RoomService) CreateRoom(ctx context.Context, r models.Room) (*models.Ro
 	return room, nil
 }
 
-func (s *RoomService) GetRoom(ctx context.Context, id int) (*models.Room, error) {
+func (s *RoomService) GetRoom(ctx context.Context, id int) (models.Room, error) {
 	room, err := s.rservice.GetRoom(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrRoomNotFound) {
-			return nil, errs.ErrRoomNotFound
+			return models.Room{}, errs.ErrRoomNotFound
 		}
-		return nil, err
+		return models.Room{}, err
 	}
 	return room, nil
 }

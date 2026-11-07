@@ -1,7 +1,7 @@
 package service
 
 import (
-	"context"
+	"fmt"
 	errs "room-booking/internal/errors"
 	"room-booking/internal/models"
 	"time"
@@ -11,7 +11,7 @@ import (
 
 // Можно использовать при Create и Update  брони
 func validateTimeRange(from, to time.Time) error {
-	//Проверка на что дата окончания брони больше его начала
+	//Проверка, что дата окончания брони больше его начала
 	if !to.After(from) {
 		return errs.ErrInvalidTimeRange
 	}
@@ -20,6 +20,7 @@ func validateTimeRange(from, to time.Time) error {
 
 // Можно использовать при Create и Update брони
 func validateMinMeetingTime(from, to time.Time) error {
+	//Проверка, что время встречи не может быть меньше 30 минут
 	dur := to.Sub(from)
 	if dur < 30*time.Minute {
 		return errs.ErrMinTimeLack
@@ -47,10 +48,9 @@ func validateBackdate(from time.Time) error {
 }
 
 // Можно использовать при Create и Update брони
-func (s *BookingService) validateIsOverlapped(ctx context.Context, roomID int, from, to time.Time) error {
+/*func (s *BookingService) validateIsOverlapped(ctx context.Context, overlapped bool, err error) error {
 	//Проверка на пересечение дат бронирования одной и той же комнаты
-	overlapped, err := s.bookingRepo.HasOverlapped(ctx, roomID, from, to)
-
+	//overlapped, err := s.bookingRepo.HasOverlapped(ctx, roomID, from, to)
 	if err != nil { //---------------------Ошибка БД, проверка не пройдена
 		return err
 	}
@@ -58,7 +58,7 @@ func (s *BookingService) validateIsOverlapped(ctx context.Context, roomID int, f
 		return errs.ErrBookingOverlap
 	}
 	return nil //--------------------------Если два условия выше не выполнены, проверка пройдена
-}
+}*/
 
 // Можно использовать при Create и Update брони
 func validateParticipantsNumber(pc int) error {
@@ -109,4 +109,18 @@ func validateInsertStatus(from, to time.Time, amount int64, hourPrice int64) mod
 		return models.BookingStatusPending
 	}
 	return models.BookingStatusConfirmed
+}
+
+func validateTitle(title string) error {
+	if title == "null" {
+		return fmt.Errorf("title cannot be null")
+	}
+	return nil
+}
+
+func validateDescription(description string) error {
+	if description == "null" {
+		return fmt.Errorf("description cannot be null")
+	}
+	return nil
 }
