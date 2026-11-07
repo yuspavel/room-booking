@@ -86,7 +86,8 @@ func (p *pgxRepository) UpdateBooking(ctx context.Context, b models.Booking) (*m
 		Set(bookingToTimeColumnName, b.ToTime).
 		Set(bookingStatusColumnName, b.Status).
 		Set(bookingAmountTableColumn, b.Amount).
-		Set(bookingPaidColumnName, b.Paid).Where(sq.Eq{bookingIDColumnName: b.ID}).
+		Set(bookingPaidColumnName, b.Paid).
+		Set(bookingUpdatedAtColumnName, time.Now()).Where(sq.Eq{bookingIDColumnName: b.ID}).
 		Suffix("RETURNING " + bookingIDColumnName + ", " + bookingTitleColumnName + ", " + bookingStatusColumnName).
 		ToSql()
 
