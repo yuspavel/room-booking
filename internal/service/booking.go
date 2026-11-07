@@ -10,16 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type finalbook struct {
-	Title              string
-	Description        string
-	From_time, To_Time time.Time
-	ParticipantsCount  int
-	Status             models.BookingStatus
-	Amount             int64
-	Paid               bool
-}
-
 type BookingRepo interface {
 	InsertBooking(ctx context.Context, roomID int, userID uuid.UUID, title string, description string, participants int, fromTime time.Time, toTime time.Time, status models.BookingStatus, paid bool) (*models.Booking, error)
 	GetBooking(ctx context.Context, id int) (*models.Booking, error)
@@ -113,9 +103,9 @@ func (b *BookingService) UpdateBooking(ctx context.Context, bkg models.BookingUp
 		return nil, err
 	}
 
-	completed := applyPatch(bkg, *booking) //Применяем patch (составляем финальную структуру для обновления данных)
+	booking.ApplyPatch(bkg) //Применяем patch (составляем финальную структуру для обновления данных)
 
-	room_exist, err = b.roomRepo.Exist(ctx, bkg.RoomID) //Проверяем, существует ли совещательная комната
+	room_exist, err = b.roomRepo.Exist(ctx, booking.RoomID) //Проверяем, существует ли совещательная комната
 	if err != nil {
 		return nil, err
 	} else if !room_exist {
@@ -125,7 +115,7 @@ func (b *BookingService) UpdateBooking(ctx context.Context, bkg models.BookingUp
 	//Проверка на пересечение обновляемых диапазонов дат бронирования
 	needOverLapCheck := booking.RoomID != bkg.RoomID || bkg.FromTime.Set || bkg.ToTime.Set //Если клиент прислал необходимые значения, то только в этом случае вызываем "дорогую" проверку с запросом к БД.
 	if needOverLapCheck {
-		overlapped, err := b.bookingRepo.HasOverlapped(ctx, bkg.ID, bkg.RoomID, completed.From_time, completed.To_Time)
+		overlapped, err := b.bookingRepo.HasOverlapped(ctx, bkg.ID, booking.RoomID, booking.FromTime, booking.ToTime)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +124,7 @@ func (b *BookingService) UpdateBooking(ctx context.Context, bkg models.BookingUp
 		}
 	}
 
-	room, err := b.roomRepo.GetRoom(ctx, bkg.RoomID)
+	room, err := b.roomRepo.GetRoom(ctx, booking.RoomID)
 	if err != nil {
 		if errors.Is(err, errs.ErrRoomNotFound) {
 			return nil, errs.ErrRoomNotFound
@@ -142,15 +132,15 @@ func (b *BookingService) UpdateBooking(ctx context.Context, bkg models.BookingUp
 		return nil, err
 	}
 
-	for _, v := range buildValidators(bkg, room) {
-		if err := v(); err != nil {
-			return nil, err
-		}
+	if err = validateBooking(*booking, room); err != nil {
+		return nil, err
 	}
 
-	if !validateStatusTransition(booking.Status, completed.Status) {
+	if !validateStatusTransition(booking.Status, booking.Status) {
 		return nil, errs.ErrStatusNotAllowed
 	}
+
+	//fBooking, err := b.bookingRepo.UpdateBooking(ctx, bkg.ID, completed)
 	return nil, nil
 }
 
@@ -173,108 +163,43 @@ func (b *BookingService) ListBookings(ctx context.Context) ([]models.Booking, er
 	return bkg, nil
 }
 
-func applyPatch(bu models.BookingUpdate, b models.Booking) finalbook {
-	var (
-		title, description string
-		from_time, to_time time.Time
-		pc                 int
-		status             models.BookingStatus
-		amount             int64
-		paid               bool
-	)
-	from_time = b.FromTime
-	to_time = b.ToTime
-	title = b.Title
-	description = b.Description
-	pc = b.ParticipantsCount
-	status = b.Status
-	amount = b.Amount
-	paid = b.Paid
+func validateBooking(completed models.Booking, room models.Room) error {
+	var err error
 
-	if bu.FromTime.Set && bu.FromTime.Val != nil {
-		from_time = *bu.FromTime.Val
+	if err = validateTitle(completed.Title); err != nil {
+		return err
 	}
-	if bu.ToTime.Set && bu.ToTime.Val != nil {
-		to_time = *bu.ToTime.Val
-	}
-	if bu.Title.Set && bu.Title.Val != nil {
-		title = *bu.Title.Val
-	}
-	if bu.Description.Set && bu.Description.Val != nil {
-		description = *bu.Description.Val
-	}
-	if bu.ParticipantsCount.Set && bu.ParticipantsCount.Val != nil {
-		pc = *bu.ParticipantsCount.Val
-	}
-	if bu.Status.Set && bu.Status.Val != nil {
-		status = *bu.Status.Val
-	}
-	if bu.Amount.Set && bu.Amount.Val != nil {
-		amount = *bu.Amount.Val
-	}
-	if bu.Paid.Set && bu.Paid.Val != nil {
-		paid = *bu.Paid.Val
+	if err = validateDescription(completed.Description); err != nil {
+		return err
 	}
 
-	result := finalbook{
-		Title:             title,
-		Description:       description,
-		From_time:         from_time,
-		To_Time:           to_time,
-		ParticipantsCount: pc,
-		Status:            status,
-		Amount:            amount,
-		Paid:              paid,
-	}
-	return result
-}
-
-func buildValidators(bkg models.BookingUpdate, room models.Room) []func() error {
-	var Validators []func() error
-
-	if bkg.Title.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateTitle(*bkg.Title.Val)
-		})
+	if err = validateBackdate(completed.FromTime); err != nil {
+		return err
 	}
 
-	if bkg.Description.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateDescription(*bkg.Description.Val)
-		})
+	if err = validateTimeRange(completed.FromTime, completed.ToTime); err != nil {
+		return err
 	}
 
-	if bkg.FromTime.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateBackdate(*bkg.FromTime.Val)
-		})
+	if err = validateMinMeetingTime(completed.FromTime, completed.ToTime); err != nil {
+		return err
 	}
 
-	if bkg.FromTime.HasValue() && bkg.ToTime.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateTimeRange(*bkg.FromTime.Val, *bkg.ToTime.Val)
-		})
-		Validators = append(Validators, func() error {
-			return validateMinMeetingTime(*bkg.FromTime.Val, *bkg.ToTime.Val)
-		})
-		Validators = append(Validators, func() error {
-			return validateMaxMeetingTime(*bkg.FromTime.Val, *bkg.ToTime.Val)
-		})
+	if err = validateMaxMeetingTime(completed.FromTime, completed.ToTime); err != nil {
+		return err
 	}
 
-	if bkg.ParticipantsCount.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateParticipantsNumber(*bkg.ParticipantsCount.Val)
-		})
-		Validators = append(Validators, func() error {
-			return validateMeetingCapacity(room.Capacity, *bkg.ParticipantsCount.Val)
-		})
+	if err = validateParticipantsNumber(completed.ParticipantsCount); err != nil {
+		return err
 	}
 
-	if bkg.Amount.HasValue() {
-		Validators = append(Validators, func() error {
-			return validateAmount(*bkg.Amount.Val)
-		})
+	if err = validateMeetingCapacity(room.Capacity, completed.ParticipantsCount); err != nil {
+		return err
 	}
+
+	if err = validateAmount(completed.Amount); err != nil {
+		return err
+	}
+
 	return nil
 }

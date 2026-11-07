@@ -44,3 +44,30 @@ const (
 	BookingStatusConfirmed = "confirmed"
 	BookingStatusCompleted = "completed"
 )
+
+func (b *Booking) ApplyPatch(bu BookingUpdate) {
+	if bu.Title.Set && bu.Title.Val != nil {
+		b.Title = *bu.Title.Val
+	}
+	if bu.Description.Set && bu.Description.Val != nil {
+		b.Description = *bu.Description.Val
+	}
+	if bu.FromTime.Set && bu.FromTime.Val != nil {
+		b.FromTime = *bu.FromTime.Val
+	}
+	if bu.ToTime.Set && bu.ToTime.Val != nil {
+		b.ToTime = *bu.ToTime.Val
+	}
+	if bu.ParticipantsCount.Set && bu.ParticipantsCount.Val != nil {
+		b.ParticipantsCount = *bu.ParticipantsCount.Val
+	}
+	if bu.Status.Set && bu.Status.Val != nil {
+		b.Status = *bu.Status.Val
+	}
+	if bu.Amount.Set && bu.Amount.Val != nil {
+		b.Amount = *bu.Amount.Val
+	}
+	if bu.Paid.Set && bu.Paid.Val != nil {
+		b.Paid = *bu.Paid.Val
+	}
+}
