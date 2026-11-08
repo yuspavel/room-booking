@@ -8,13 +8,12 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
-	constraint = "chk_booking_status"
+	book_constraint = "chk_booking_status"
 
 	bookingTableName              = "booking"
 	bookingIDColumnName           = "ID"
@@ -32,11 +31,11 @@ const (
 	bookingUpdatedAtColumnName    = "updated_at"
 )
 
-func (p *pgxRepository) InsertBooking(ctx context.Context, roomID int, userID uuid.UUID, title string, description string, participants int, fromTime time.Time, toTime time.Time, status models.BookingStatus, amount float64, paid bool) (*models.Booking, error) {
+func (p *pgxRepository) InsertBooking(ctx context.Context, b models.Booking) (*models.Booking, error) {
 	query, args, err := psql.
 		Insert(bookingTableName).
 		Columns(bookingRoomIDColumnName, bookingUserIDColumnName, bookingTitleColumnName, bookingDescriptionColumnName, bookingParticipantsColumnName, bookingFromTimeColumnName, bookingToTimeColumnName, bookingStatusColumnName, bookingAmountTableColumn, bookingPaidColumnName).
-		Values(roomID, userID, title, description, participants, fromTime, toTime, status, amount, paid).
+		Values(b.RoomID, b.UserID, b.Title, b.Description, b.ParticipantsCount, b.FromTime, b.ToTime, b.Status, b.Amount, b.Paid).
 		Suffix("RETURNING " + bookingIDColumnName + ", " + bookingTitleColumnName).
 		ToSql()
 
@@ -99,9 +98,9 @@ func (p *pgxRepository) UpdateBooking(ctx context.Context, b models.Booking) (*m
 	err = p.db.QueryRow(ctx, query, args...).Scan(&booking.ID, &booking.Title, &booking.Status)
 	if err != nil { //---------------------------проверяем на ошибки. Если err!=nil, то..
 		var pgErr *pgconn.PgError
-		if ok := errors.As(err, &pgErr); ok && pgErr.ConstraintName == constraint { //.. пытаемся привести ошибку к типу pgconn.PgErr.
+		if ok := errors.As(err, &pgErr); ok && pgErr.ConstraintName == book_constraint { //.. пытаемся привести ошибку к типу pgconn.PgErr.
 			//---------------------------------Если удачно и в поле ConstraintName содержится имя ограничения (смотри миграцию таблицы booking,поле status), то возвращаем кастомную ошибку
-			return nil, errs.ErrStatusNotAllowed
+			return nil, errs.ErrInvalidStatusTransition
 		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrBookingNotFound
