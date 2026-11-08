@@ -1,11 +1,22 @@
 -- +goose Up
+
+CREATE TYPE currency AS ENUM
+(
+    'RUB',
+    'KZT',
+    'EUR',
+    'USD'
+);
 CREATE TABLE room
 (
     id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name       VARCHAR(30) NOT NULL,
     capacity   INTEGER NOT NULL,
     hour_price NUMERIC(10,2) NOT NULL,
-    currency   VARCHAR(4) NOT NULL,
+    currency   VARCHAR(3) NOT NULL DEFAULT 'RUB' CONSTRAINT chk_currency
+    CHECK(
+        currency IN ('RUB','KZT','EUR','USD')
+    ),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

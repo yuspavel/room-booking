@@ -8,27 +8,30 @@ import (
 )
 
 type RoomRepo interface {
-	CreateRoom(ctx context.Context, name string, capacity int, price int64, currency string) (*models.Room, error)
+	CreateRoom(ctx context.Context, room models.Room) (*models.Room, error)
 	GetRoom(ctx context.Context, id int) (models.Room, error)
-	UpdateRoom(ctx context.Context, roomID int, room models.RoomUpdate) (int, error)
+	UpdateRoom(ctx context.Context, room models.Room) (*models.Room, error)
 	ListRooms(ctx context.Context) ([]models.Room, error)
-	Exist(ctx context.Context, roomID int) (bool, error)
 }
 
 type RoomService struct {
-	rservice RoomRepo
+	roomRepo RoomRepo
 }
 
-func (s *RoomService) CreateRoom(ctx context.Context, r models.Room) (*models.Room, error) {
-	room, err := s.rservice.CreateRoom(ctx, r.Name, r.Capacity, r.HourPrice, r.Currency)
+func (r *RoomService) CreateRoom(ctx context.Context, rm models.Room) (*models.Room, error) {
+	if err := rm.ValidateRoom(); err != nil {
+		return nil, err
+	}
+
+	room, err := r.roomRepo.CreateRoom(ctx, rm)
 	if err != nil {
 		return nil, err
 	}
 	return room, nil
 }
 
-func (s *RoomService) GetRoom(ctx context.Context, id int) (models.Room, error) {
-	room, err := s.rservice.GetRoom(ctx, id)
+func (r *RoomService) GetRoom(ctx context.Context, id int) (models.Room, error) {
+	room, err := r.roomRepo.GetRoom(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrRoomNotFound) {
 			return models.Room{}, errs.ErrRoomNotFound
@@ -38,24 +41,38 @@ func (s *RoomService) GetRoom(ctx context.Context, id int) (models.Room, error) 
 	return room, nil
 }
 
-func (s *RoomService) UpdateRoom(ctx context.Context, roomID int, room models.RoomUpdate) (int, error) {
-	d, err := s.rservice.UpdateRoom(ctx, roomID, room)
+func (r *RoomService) UpdateRoom(ctx context.Context, rUpd models.RoomUpdate) (*models.Room, error) {
+
+	room, err := r.GetRoom(ctx, rUpd.ID)
+	if err != nil {
+		if errors.Is(err, errs.ErrRoomNotFound) {
+			return nil, errs.ErrRoomNotFound
+		}
+		return nil, err
+	}
+
+	room.ApplyPatch(rUpd)
+	if err = room.ValidateRoom(); err != nil {
+		return nil, err
+	}
+
+	d, err := r.roomRepo.UpdateRoom(ctx, room)
 	if err != nil {
 		switch {
 		case errors.Is(err, errs.ErrInvalidInput):
-			return 0, errs.ErrInvalidInput
+			return nil, errs.ErrInvalidInput
 		case errors.Is(err, errs.ErrRoomNotFound):
-			return 0, errs.ErrRoomNotFound
+			return nil, errs.ErrRoomNotFound
 		default:
-			return 0, err
+			return nil, err
 		}
 	}
 	return d, nil
 
 }
 
-func (s *RoomService) ListRooms(ctx context.Context) ([]models.Room, error) {
-	rooms, err := s.rservice.ListRooms(ctx)
+func (r *RoomService) ListRooms(ctx context.Context) ([]models.Room, error) {
+	rooms, err := r.roomRepo.ListRooms(ctx)
 	if err != nil {
 		return nil, err
 	}

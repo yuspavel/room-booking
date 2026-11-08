@@ -9,6 +9,7 @@ var (
 	ErrInvalidInput = errors.New("invalid input")
 	//room errors
 	ErrRoomNotFound        = errors.New("room not found")
+	ErrInvalidRoomName     = errors.New("invalid room name")
 	ErrInvalidRoomPrice    = errors.New("invalid room price")
 	ErrCurrencyNotAllowed  = errors.New("invalid currency")
 	ErrInvalidRoomCapacity = errors.New("invalid room capacity")
