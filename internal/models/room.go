@@ -33,16 +33,16 @@ const (
 )
 
 func (r *Room) ApplyPatch(ru RoomUpdate) {
-	if ru.Name.Set && ru.Name.Val != nil {
+	if ru.Name.HasValue() {
 		r.Name = *ru.Name.Val
 	}
-	if ru.Capacity.Set && ru.Capacity.Val != nil {
+	if ru.Capacity.HasValue() {
 		r.Capacity = *ru.Capacity.Val
 	}
-	if ru.HourPrice.Set && ru.Capacity.Val != nil {
+	if ru.HourPrice.HasValue() {
 		r.Capacity = *ru.Capacity.Val
 	}
-	if ru.Currency.Set && ru.Currency.Val != nil {
+	if ru.Currency.HasValue() {
 		r.Currency = *ru.Currency.Val
 	}
 }

@@ -14,8 +14,8 @@ var (
 	ErrCurrencyNotAllowed  = errors.New("invalid currency")
 	ErrInvalidRoomCapacity = errors.New("invalid room capacity")
 	//user errors
-	ErrUserNotFound      = errors.New("user not found")
-	ErrEmailAlreadyExist = errors.New("email already exist")
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrEmailAlreadyExist  = errors.New("email already exist")
 	//booking errors
 	ErrBookingNotFound         = errors.New("booking not found")
 	ErrInvalidTimeRange        = errors.New("invalid bookig time range")

@@ -49,25 +49,25 @@ const (
 
 func (b *Booking) ApplyPatch(bu BookingUpdate) {
 	b.RoomID = bu.RoomID
-	if bu.Title.Set && bu.Title.Val != nil {
+	if bu.Title.HasValue() {
 		b.Title = *bu.Title.Val
 	}
-	if bu.Description.Set && bu.Description.Val != nil {
+	if bu.Description.HasValue() {
 		b.Description = *bu.Description.Val
 	}
-	if bu.FromTime.Set && bu.FromTime.Val != nil {
+	if bu.FromTime.HasValue() {
 		b.FromTime = *bu.FromTime.Val
 	}
-	if bu.ToTime.Set && bu.ToTime.Val != nil {
+	if bu.ToTime.HasValue() {
 		b.ToTime = *bu.ToTime.Val
 	}
-	if bu.ParticipantsCount.Set && bu.ParticipantsCount.Val != nil {
+	if bu.ParticipantsCount.HasValue() {
 		b.ParticipantsCount = *bu.ParticipantsCount.Val
 	}
-	if bu.Amount.Set && bu.Amount.Val != nil {
+	if bu.Amount.HasValue() {
 		b.Amount = *bu.Amount.Val
 	}
-	if bu.Paid.Set && bu.Paid.Val != nil {
+	if bu.Paid.HasValue() {
 		b.Paid = *bu.Paid.Val
 	}
 }

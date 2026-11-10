@@ -12,49 +12,47 @@ import (
 )
 
 const (
-	userTableName            = "users"
-	idUserTableColumn        = "id"
-	nameUserTableColumn      = "name"
-	passHashTableColumn      = "pass_hash"
-	emailTableColumn         = "email"
-	phoneTableColumn         = "phone"
-	createdAtUserTableColumn = "created_at"
+	userTableName                = "users"
+	userIDTableColumn            = "id"
+	userNameTableColumn          = "name"
+	userPassHashTableColumn      = "pass_hash"
+	userEmailTableColumn         = "email"
+	userPhoneTableColumn         = "phone"
+	userCreatedAtUserTableColumn = "created_at"
 )
 
-var ()
-
-func (p *pgxRepository) CreareUser(ctx context.Context, name string, passhash string, email string, phone string) (models.User, error) {
+func (p *pgxRepository) CreareUser(ctx context.Context, u models.User) (*models.User, error) {
 	query, args, err := psql.
 		Insert(userTableName).
-		Columns(nameUserTableColumn, passHashTableColumn, emailTableColumn, phoneTableColumn).
-		Values(name, passhash, email, phone).
-		Suffix("RETURNING " + idUserTableColumn + ", " + nameUserTableColumn).
+		Columns(userNameTableColumn, userPassHashTableColumn, userEmailTableColumn, userPhoneTableColumn).
+		Values(u.Name, u.Password, u.Email, u.Phone).
+		Suffix("RETURNING " + userIDTableColumn + ", " + userNameTableColumn + ", " + userCreatedAtUserTableColumn).
 		ToSql()
 
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
 
 	var user models.User
 
-	err = p.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name)
+	err = p.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
 			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
-				return models.User{}, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
+				return nil, errs.ErrEmailAlreadyExist //--возвращаем кастомную ошибку
 			}
 		}
-		return models.User{}, err
+		return nil, err
 	}
-	return user, nil
+	return &user, nil
 }
 
 func (p *pgxRepository) GetUser(ctx context.Context, email string) (*models.User, error) {
 	query, args, err := psql.
-		Select(idUserTableColumn, nameUserTableColumn, emailTableColumn, phoneTableColumn, createdAtUserTableColumn).
+		Select(userIDTableColumn, userNameTableColumn, userEmailTableColumn, userPhoneTableColumn, userCreatedAtUserTableColumn).
 		From(userTableName).
-		Where(sq.Eq{emailTableColumn: email}).
+		Where(sq.Eq{userEmailTableColumn: email}).
 		ToSql()
 
 	if err != nil {
@@ -63,44 +61,23 @@ func (p *pgxRepository) GetUser(ctx context.Context, email string) (*models.User
 
 	var user models.User
 
-	err = p.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.Email, &user.Phone, &user.CreatedAt)
+	err = p.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.Phone, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return &models.User{}, errs.ErrUserNotFound
+			return nil, errs.ErrInvalidCredentials
 		}
-		return &models.User{}, err
+		return nil, err
 	}
 	return &user, nil
 }
 
-func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user models.UserUpdate) (*models.User, error) {
-	updated := false
-	builder := psql.
-		Update(userTableName)
-
-	if user.Name != nil {
-		builder = builder.Set(nameUserTableColumn, *user.Name)
-		updated = true
-	}
-	if user.PassHash != nil {
-		builder = builder.Set(passHashTableColumn, *user.PassHash)
-		updated = true
-	}
-
-	builder = builder.Set(emailTableColumn, email)
-
-	if user.Phone != nil {
-		builder = builder.Set(phoneTableColumn, *user.Phone)
-		updated = true
-	}
-
-	if !updated {
-		return nil, errs.ErrInvalidInput
-	}
-
-	builder = builder.Suffix("RETURNING " + idUserTableColumn + ", " + nameUserTableColumn + ", " + emailTableColumn)
-	query, args, err := builder.
-		Where(sq.Eq{emailTableColumn: email}).
+func (p *pgxRepository) UpdateUser(ctx context.Context, user models.User) (*models.User, error) {
+	query, args, err := psql.
+		Update(userTableName).
+		Set(userNameTableColumn, user.Name).
+		Set(userPassHashTableColumn, user.Password).
+		Set(userPhoneTableColumn, user.Phone).
+		Where(sq.Eq{userEmailTableColumn: user.Email}).
 		ToSql()
 
 	if err != nil {
@@ -113,7 +90,7 @@ func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user model
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) { //--------------------------В таблице users имеется уникальное поле email.
 			if pgErr.Code == "23505" { //-----------------------Если произойдет вставка не уникального значения...
-				return nil, errs.ErrEmailAlreadyExist //----------возвращаем кастомную ошибку
+				return nil, errs.ErrEmailAlreadyExist //--------возвращаем кастомную ошибку
 			}
 		}
 	}
@@ -123,9 +100,9 @@ func (p *pgxRepository) UpdateUser(ctx context.Context, email string, user model
 
 func (p *pgxRepository) ListUsers(ctx context.Context) ([]models.User, error) {
 	query, _, err := psql.
-		Select(idUserTableColumn, nameUserTableColumn, emailTableColumn, phoneTableColumn, createdAtUserTableColumn).
+		Select(userIDTableColumn, userNameTableColumn, userEmailTableColumn, userPhoneTableColumn, userCreatedAtUserTableColumn).
 		From(userTableName).
-		OrderBy(nameUserTableColumn).
+		OrderBy(userNameTableColumn).
 		ToSql()
 
 	if err != nil {
@@ -138,17 +115,9 @@ func (p *pgxRepository) ListUsers(ctx context.Context) ([]models.User, error) {
 	}
 	defer rows.Close()
 
-	var users []models.User
-	for rows.Next() {
-		var user models.User
-		rows.Scan(
-			&user.ID,
-			&user.Name,
-			&user.Email,
-			&user.Phone,
-			&user.CreatedAt,
-		)
-		users = append(users, user)
+	users, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.User]) //Выбираем все строки из rows в срез структур Users
+	if err != nil {
+		return nil, err
 	}
 
 	if err = rows.Err(); err != nil {

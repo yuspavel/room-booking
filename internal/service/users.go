@@ -10,9 +10,10 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, name, passhash, email, phone string) (models.User, error)
+	CreateUser(ctx context.Context, user models.User) (models.User, error)
 	GetUser(ctx context.Context, email string) (*models.User, error)
-	UpdateUser(ctx context.Context, email string, user models.UserUpdate) (*models.User, error)
+	UpdateUser(ctx context.Context, user models.UserUpdate) (*models.User, error)
+	ListUsers(ctx context.Context) ([]models.User, error)
 }
 
 type UserService struct {
@@ -20,41 +21,40 @@ type UserService struct {
 }
 
 // ОБРАТИТЬ ВНИМАНИЕ: на передачу возвращаемой структуры models.User. В этом методе она передается по значению
-func (s *UserService) Register(ctx context.Context, u models.User) (models.User, error) {
+func (s *UserService) Register(ctx context.Context, u models.User) (*models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return models.User{}, err
+		return nil, err
 	}
 
-	user, err := s.urepo.CreateUser(ctx, u.Name, string(hash), u.Email, u.Phone)
+	u.Password = string(hash)
+	user, err := s.urepo.CreateUser(ctx, u)
 	if err != nil {
 		if errors.Is(err, errs.ErrEmailAlreadyExist) {
-			return models.User{}, errs.ErrEmailAlreadyExist
+			return nil, errs.ErrEmailAlreadyExist
 		}
-		return models.User{}, err
+		return nil, err
 	}
-	return user, nil
+	return &user, nil
 }
 
-// ОБРАТИТЬ ВНИМАНИЕ: на передачу возвращаемой структуры models.User. В этом методе она передается по ссылке
 func (s *UserService) Authorize(ctx context.Context, email, password string) (*models.User, error) {
 	user, err := s.urepo.GetUser(ctx, email)
 	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			return nil, errs.ErrUserNotFound
+		if errors.Is(err, errs.ErrInvalidCredentials) {
+			return nil, errs.ErrInvalidCredentials
 		}
 		return nil, err
 	}
 
-	hashedPassword := []byte(user.Password)
-	if err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(password)); err != nil {
+	if err = checkPassword(user.Password, password); err != nil {
 		return nil, err
 	}
 	return user, nil
 }
 
-func (s *UserService) UpdateUserData(ctx context.Context, email string, u models.UserUpdate) (*models.User, error) {
-	user, err := s.urepo.UpdateUser(ctx, email, u)
+func (s *UserService) UpdateUser(ctx context.Context, u models.UserUpdate) (*models.User, error) {
+	user, err := s.urepo.UpdateUser(ctx, u)
 	if err != nil {
 		if errors.Is(err, errs.ErrEmailAlreadyExist) {
 			return nil, errs.ErrEmailAlreadyExist
@@ -62,4 +62,11 @@ func (s *UserService) UpdateUserData(ctx context.Context, email string, u models
 		return nil, err
 	}
 	return user, nil
+}
+
+func checkPassword(hashedPass, password string) error {
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte(password)); err != nil {
+		return errs.ErrInvalidCredentials
+	}
+	return nil
 }
