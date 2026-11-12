@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	errs "room-booking/internal/errors"
 	"room-booking/internal/patch"
 	"time"
@@ -65,7 +64,7 @@ func (b *Booking) ApplyPatch(bu BookingUpdate) {
 		b.ParticipantsCount = *bu.ParticipantsCount.Val
 	}
 	if bu.Amount.HasValue() {
-		b.Amount = *bu.Amount.Val
+		b.Amount += *bu.Amount.Val
 	}
 	if bu.Paid.HasValue() {
 		b.Paid = *bu.Paid.Val
@@ -170,7 +169,7 @@ func (b *Booking) validateBackdate() error {
 // Можно использовать при Create и Update брони
 func (b *Booking) validateParticipantsNumber() error {
 	if b.ParticipantsCount <= 0 {
-		return errs.ErrNoParticipantsInvolved
+		return errs.ErrInvalidParticipantsCount
 	}
 	return nil
 }
@@ -179,21 +178,21 @@ func (b *Booking) validateParticipantsNumber() error {
 func (b *Booking) validateAmount() error {
 	//Проверяем, что сумма оплаты не отрицательная
 	if b.Amount < 0 {
-		return errs.ErrNegativeAmount
+		return errs.ErrInvalidAmount
 	}
 	return nil
 }
 
 func (b *Booking) validateTitle() error {
-	if b.Title == "null" {
-		return fmt.Errorf("title cannot be null")
+	if b.Title == "null" || b.Title == "" {
+		return errs.ErrInvalidTitle
 	}
 	return nil
 }
 
 func (b *Booking) validateDescription() error {
-	if b.Description == "null" {
-		return fmt.Errorf("description cannot be null")
+	if b.Description == "null" || b.Description == "" {
+		return errs.ErrInvalidDescription
 	}
 	return nil
 }
